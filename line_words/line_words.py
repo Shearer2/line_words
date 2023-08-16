@@ -18,7 +18,7 @@ class WordLine:
     def __init__(self, letters):
         self.host = '127.0.0.1'
         self.user = 'postgres'
-        self.password = input('Введите ваш пароль: '),
+        self.password ='alegedor0012'  # input('Введите ваш пароль: '),
         self.database = 'line_words'
         self.letters = letters
 
@@ -68,10 +68,11 @@ API_TOKEN = '6398703102:AAH-c3FCv37FTnF0hDXdz1pS3fTMRnBjGDc'
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 HELP_COMMAND = """
-/help - список команд
-/start - начать работу с ботом
-/links - перейти в репозиторий github
-/projects - ознакомиться с проектами
+<b>/help</b> - <em>список команд</em>
+<b>/start</b> - <em>начать работу с ботом</em>
+<b>/links</b> - <em>перейти в репозиторий github</em>
+<b>/projects</b> - <em>ознакомиться с проектами</em>
+<b>/description</b> - <em>описание проекта</em>
 """
 
 
@@ -80,7 +81,11 @@ HELP_COMMAND = """
 @dp.message_handler(commands='start')  # Явно указываем в декораторе, на какую команду реагируем.
 async def send_welcome(message: types.Message):
     # Для асинхронной работы бота пишем await. Бот отвечает на сообщение при помощи reply.
-    await message.reply("Привет!\n Я - бот, предназначенный для игры линия слова.")
+    # parse_mode позволяет указывать какой-то язык, чтобы в тексте использовать функционал данного языка.
+    await message.reply("<em>Привет! 🤚\n Я - бот 🤖, предназначенный для игры линия слова.</em>", parse_mode="HTML")
+    # Для отправки сообщения туда, где пишет пользователь, нужно указывать message.chat.id. Для отправки сообщения
+    # только в личные сообщения пользователю, даже если он пишет в группе, используется message.from_user.id.
+    await bot.send_photo(chat_id=message.chat.id, photo="https://play-lh.googleusercontent.com/F3mmWSAnQ8Y3ys8KY8v0tD0Sd1hLHoSbA3SGsmQWbt5KsZq9rh2grAefGbgQKkv2Tlg")
 
 
 # В качестве команды вызова указываем ссылки, а в параметре reply_markup передаём название нашей клавиатуры.
@@ -92,18 +97,36 @@ async def url_command(message: types.Message):
 
 @dp.message_handler(commands='help')
 async def bot_help(message: types.Message):
-    await message.answer(HELP_COMMAND)
+    await message.answer(HELP_COMMAND, parse_mode="HTML")
     #await message.answer('Бот создан для отгадывания слов из букв в игре Линия слова.\n'
     #                     'Введите буквы и получите все возможные слова.')
 
 
 @dp.message_handler(commands='projects')
 async def projects(message: types.Message):
-    pass
+    await message.answer('Мои проекты:', reply_markup=urlkb)
 
 
-@dp.message_handler()  # Создаём новое событие, которое запускается в ответ на любой текст, введённый пользователем.
-# Создаём функцию с простой задачей - отправить обратно тот же текст, что ввёл пользователь.
+# Функция для отправки стикеров.
+@dp.message_handler(commands='give')
+async def bot_sticker(message: types.Message):
+    await bot.send_sticker(message.from_user.id,
+                           sticker="CAACAgIAAxkBAAEKCmFk3KOnuqxhgaM2DFhFG3VyNWsHtQACPwADQdL3IfZZVXp87Hm5MAQ")
+    await message.answer('Люблю Миланочку чудесную')
+
+
+@dp.message_handler(content_types='sticker')
+async def send_sticker_id(message: types.Message):
+    await message.reply(f"Id стикера:\n{message.sticker.file_id}")
+
+
+@dp.message_handler(commands='description')
+async def bot_description(message: types.Message):
+    await message.answer("Описание проекта.")
+
+
+# Создаём новое событие, которое запускается в ответ на любой текст, введённый пользователем.
+@dp.message_handler()
 async def echo(message: types.Message):
     kb = [
         [
@@ -111,6 +134,9 @@ async def echo(message: types.Message):
             KeyboardButton(text="/help"),
             KeyboardButton(text="/links"),
             KeyboardButton(text="/projects")
+        ],
+        [
+            KeyboardButton(text="/description")
         ],
     ]
     # Создаём клавиатуру и рассказываем ей про наши кнопки.
@@ -125,14 +151,18 @@ async def echo(message: types.Message):
 # Аргумент row_width определяет сколько кнопок будет находиться в одном ряду.
 urlkb = InlineKeyboardMarkup(row_width=1)
 # Создаём кнопки с указанием текста и ссылки, по которой будет осуществляться переход при нажатии.
-urlButton = InlineKeyboardButton(text='Перейти в github', url='https://github.com/Shearer2?tab=repositories')
-#urlButton2 = InlineKeyboardButton(text='Перейти к курсам', url='https://skillbox.ru/code/')
-# Добавляем две кнопки к уже созданной клавиатуре.
-#urlkb.add(urlButton, urlButton2)
-urlkb.add(urlButton)
+urlButton = InlineKeyboardButton(text='Линия слова', url='https://github.com/Shearer2/line_words')
+urlButton2 = InlineKeyboardButton(text='Угадывание чисел', url='https://github.com/Shearer2/Random_numbers')
+urlButton3 = InlineKeyboardButton(text='Угадывание слов', url='https://github.com/Shearer2/Random_word')
+urlButton4 = InlineKeyboardButton(text='Парсер телеграм каналов', url='https://github.com/Shearer2/Parser_telegram')
+urlButton5 = InlineKeyboardButton(text='Адаптивный сайт', url='https://github.com/Shearer2/Adaptive-site')
+# Добавляем кнопки к уже созданной клавиатуре.
+urlkb.add(urlButton, urlButton2, urlButton3, urlButton4, urlButton5)
 
 
 # Настраиваем получение сообщений от сервера в телеграм. Если этого не сделать, то мы не получим ответы бота.
 # start_polling опрашивает сервер, проверяя на нём обновления, если они есть, то они приходят в телеграм.
 if __name__ == '__main__':
+    # skip_updates нужно чтобы все обновления пропускались. Если будет False, то при каждом запуске бот будет пытаться
+    # ответить на все сообщения, которые были отправлены, пока он был выключен.
     executor.start_polling(dp, skip_updates=True)
