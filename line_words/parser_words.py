@@ -17,7 +17,9 @@ def all_words() -> list:
 def nouns_singular(nouns: list):
     result = []
     for noun in nouns:
-        if len(noun) > 2 and '-' not in noun and not noun.endswith('ые') and not noun.endswith('ы'):
+        #if len(noun) > 2 and '-' not in noun and not noun.endswith('ые') and not noun.endswith('ы'):
+        #    result.append(noun)
+        if len(noun) > 2 and '-' not in noun:
             result.append(noun)
     return result
 
@@ -26,7 +28,7 @@ def add_database(words: list):
     connection = psycopg2.connect(
         host='127.0.0.1',
         user='postgres',
-        password='alegedor0012',  # input('Введите ваш пароль: '),
+        password=input('Введите ваш пароль: '),
         database='line_words'
     )
     connection.autocommit = True
@@ -38,10 +40,12 @@ def add_database(words: list):
     connection.close()
 
 
-with open('singular.txt', 'r', encoding='utf-8') as words_all:
-    maped = list(map(lambda x: x.split()[0], words_all.readlines()))
+with open('russian_nouns.txt', 'r', encoding='utf-8') as words_all:
+    mapped = list(map(lambda x: x.split()[0], words_all.readlines()))
 
-maped.extend(all_words())
-nouns = sorted(set(maped))
-parser = nouns_singular(nouns)
+#mapped.extend(all_words())
+#nouns = sorted(set(mapped))
+#parser = nouns_singular(nouns)
+#add_database(parser)
+parser = nouns_singular(mapped)
 add_database(parser)
