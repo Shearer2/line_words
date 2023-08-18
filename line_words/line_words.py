@@ -1,9 +1,9 @@
 import psycopg2
-import requests
-from bs4 import BeautifulSoup as BS
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from dotenv import load_dotenv
+import os
 
 
 # Bot - определяет, на какие команды от пользователя и каким способом отвечать.
@@ -62,10 +62,11 @@ class WordLine:
         return 'Слов с такими буквами нет.'
 
 
-API_TOKEN = '6398703102:AAH-c3FCv37FTnF0hDXdz1pS3fTMRnBjGDc'
+# Загружаем переменные среды, которые нужно скрыть от постронних глаз.
+load_dotenv()
 # Необходимо инициализировать объекты bot и Dispatcher, передав первому токен. Если этого не сделать, то код не будет
-# работать.
-bot = Bot(token=API_TOKEN)
+# работать. Забираем значение нашего токена.
+bot = Bot(token=os.getenv('API_TOKEN'))
 dp = Dispatcher(bot)
 HELP_COMMAND = """
 <b>/help</b> - <em>список команд</em>
@@ -73,7 +74,13 @@ HELP_COMMAND = """
 <b>/links</b> - <em>перейти в репозиторий github</em>
 <b>/projects</b> - <em>ознакомиться с проектами</em>
 <b>/description</b> - <em>описание проекта</em>
+<b>/vote</b> - <em>голосование</em>
 """
+
+
+# Отображение информации в консоли, что бот работает.
+async def on_startup(_):
+    print("Бот включён.")
 
 
 # Чтобы настроить приветственное окно для нового пользователя, которое будет появляться при нажатии команды /start,
@@ -92,7 +99,8 @@ async def send_welcome(message: types.Message):
 @dp.message_handler(commands='links')
 async def url_command(message: types.Message):
     # Пишем сообщение пользователю при помощи answer.
-    await message.answer('Полезные ссылки:', reply_markup=urlkb)
+    #await message.answer('Полезные ссылки:', reply_markup=urlkb)
+    pass
 
 
 @dp.message_handler(commands='help')
@@ -125,6 +133,24 @@ async def bot_description(message: types.Message):
     await message.answer("Описание проекта.")
 
 
+@dp.message_handler(commands='vote')
+async def bot_vote(message: types.Message):
+    ikb = InlineKeyboardMarkup(row_width=1)
+    button1 = InlineKeyboardButton(text="Да", callback_data="like")
+    button2 = InlineKeyboardButton(text="Нет", callback_data="dislike")
+    ikb.add(button1, button2)
+    await message.answer("Все ли слова угадываются?", reply_markup=ikb)
+
+
+# Создаём callback функцию для голосования.
+@dp.callback_query_handler()
+async def vote_callback(callback: types.CallbackQuery):
+    if callback.data == 'like':
+        # Не нужно указывать return, так как callback.answer завершает исполнение callback функции.
+        await callback.answer('Слов хватает')
+    await callback.answer('Слов не хватает')
+
+
 # Создаём новое событие, которое запускается в ответ на любой текст, введённый пользователем.
 @dp.message_handler()
 async def echo(message: types.Message):
@@ -136,7 +162,8 @@ async def echo(message: types.Message):
             KeyboardButton(text="/projects")
         ],
         [
-            KeyboardButton(text="/description")
+            KeyboardButton(text="/description"),
+            KeyboardButton(text="/vote")
         ],
     ]
     # Создаём клавиатуру и рассказываем ей про наши кнопки.
@@ -165,4 +192,4 @@ urlkb.add(urlButton, urlButton2, urlButton3, urlButton4, urlButton5)
 if __name__ == '__main__':
     # skip_updates нужно чтобы все обновления пропускались. Если будет False, то при каждом запуске бот будет пытаться
     # ответить на все сообщения, которые были отправлены, пока он был выключен.
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
