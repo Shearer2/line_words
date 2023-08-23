@@ -1,9 +1,10 @@
 import psycopg2
+import os
+from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from dotenv import load_dotenv
-import os
+from keyboards import keyboard, urlkb, ikb
 
 
 # Bot - определяет, на какие команды от пользователя и каким способом отвечать.
@@ -79,14 +80,14 @@ HELP_COMMAND = """
 
 
 # Отображение информации в консоли, что бот работает.
-async def on_startup(_):
+async def on_startup(_) -> None:
     print("Бот включён.")
 
 
 # Чтобы настроить приветственное окно для нового пользователя, которое будет появляться при нажатии команды /start,
 # необходимо создать message_handler и прописать функцию ответа.
-@dp.message_handler(commands='start')  # Явно указываем в декораторе, на какую команду реагируем.
-async def send_welcome(message: types.Message):
+@dp.message_handler(commands=['start'])  # Явно указываем в декораторе, на какую команду реагируем.
+async def send_welcome(message: types.Message) -> None:
     # Для асинхронной работы бота пишем await. Бот отвечает на сообщение при помощи reply.
     # parse_mode позволяет указывать какой-то язык, чтобы в тексте использовать функционал данного языка.
     await message.reply("<em>Привет! 🤚\n Я - бот 🤖, предназначенный для игры линия слова.</em>", parse_mode="HTML")
@@ -96,55 +97,54 @@ async def send_welcome(message: types.Message):
 
 
 # В качестве команды вызова указываем ссылки, а в параметре reply_markup передаём название нашей клавиатуры.
-@dp.message_handler(commands='links')
-async def url_command(message: types.Message):
+@dp.message_handler(commands=['links'])
+async def url_command(message: types.Message) -> None:
     # Пишем сообщение пользователю при помощи answer.
     #await message.answer('Полезные ссылки:', reply_markup=urlkb)
     pass
 
 
-@dp.message_handler(commands='help')
-async def bot_help(message: types.Message):
+@dp.message_handler(commands=['help'])
+async def bot_help(message: types.Message) -> None:
     await message.answer(HELP_COMMAND, parse_mode="HTML")
     #await message.answer('Бот создан для отгадывания слов из букв в игре Линия слова.\n'
     #                     'Введите буквы и получите все возможные слова.')
 
 
-@dp.message_handler(commands='projects')
-async def projects(message: types.Message):
+@dp.message_handler(commands=['projects'])
+async def projects(message: types.Message) -> None:
     await message.answer('Мои проекты:', reply_markup=urlkb)
 
 
 # Функция для отправки стикеров.
-@dp.message_handler(commands='give')
-async def bot_sticker(message: types.Message):
+@dp.message_handler(commands=['give'])
+async def bot_sticker(message: types.Message) -> None:
     await bot.send_sticker(message.from_user.id,
                            sticker="CAACAgIAAxkBAAEKCmFk3KOnuqxhgaM2DFhFG3VyNWsHtQACPwADQdL3IfZZVXp87Hm5MAQ")
     await message.answer('Люблю Миланочку чудесную')
 
 
-@dp.message_handler(content_types='sticker')
-async def send_sticker_id(message: types.Message):
+@dp.message_handler(content_types=['sticker'])
+async def send_sticker_id(message: types.Message) -> None:
     await message.reply(f"Id стикера:\n{message.sticker.file_id}")
 
 
-@dp.message_handler(commands='description')
-async def bot_description(message: types.Message):
-    await message.answer("Описание проекта.")
+@dp.message_handler(commands=['description'])
+async def bot_description(message: types.Message) -> None:
+    await message.answer("Данный бот выдаёт все возможные слова на введённые буквы. Есть возможность проголосовать за "
+                         "то, все ли слова были найдены или нет. Можно ознакомиться с проектами автора бота или же с "
+                         "функционалом бота через команду help.")
 
 
-@dp.message_handler(commands='vote')
-async def bot_vote(message: types.Message):
-    ikb = InlineKeyboardMarkup(row_width=1)
-    button1 = InlineKeyboardButton(text="Да", callback_data="like")
-    button2 = InlineKeyboardButton(text="Нет", callback_data="dislike")
-    ikb.add(button1, button2)
+@dp.message_handler(commands=['vote'])
+async def bot_vote(message: types.Message) -> None:
     await message.answer("Все ли слова угадываются?", reply_markup=ikb)
 
 
 # Создаём callback функцию для голосования.
 @dp.callback_query_handler()
-async def vote_callback(callback: types.CallbackQuery):
+async def vote_callback(callback: types.CallbackQuery) -> None:
+    # callback - словарь, в котором хранится вся необходимая информация о пользователе, о сообщении, о выборе ответа.
     if callback.data == 'like':
         # Не нужно указывать return, так как callback.answer завершает исполнение callback функции.
         await callback.answer('Слов хватает')
@@ -153,38 +153,10 @@ async def vote_callback(callback: types.CallbackQuery):
 
 # Создаём новое событие, которое запускается в ответ на любой текст, введённый пользователем.
 @dp.message_handler()
-async def echo(message: types.Message):
-    kb = [
-        [
-            # Создаём кнопки.
-            KeyboardButton(text="/help"),
-            KeyboardButton(text="/links"),
-            KeyboardButton(text="/projects")
-        ],
-        [
-            KeyboardButton(text="/description"),
-            KeyboardButton(text="/vote")
-        ],
-    ]
-    # Создаём клавиатуру и рассказываем ей про наши кнопки.
-    # Чтобы автоматически уменьшить размер кнопок указываем resize_keyboard=True.
-    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-
+async def echo(message: types.Message) -> None:
     # В строку для ответа добавляем reply_markup=keyboard, чтобы показать клавиатуру в телеграм.
     word_line = WordLine(message.text.lower())
     await message.answer(text=word_line.search_database(), reply_markup=keyboard)
-
-
-# Аргумент row_width определяет сколько кнопок будет находиться в одном ряду.
-urlkb = InlineKeyboardMarkup(row_width=1)
-# Создаём кнопки с указанием текста и ссылки, по которой будет осуществляться переход при нажатии.
-urlButton = InlineKeyboardButton(text='Линия слова', url='https://github.com/Shearer2/line_words')
-urlButton2 = InlineKeyboardButton(text='Угадывание чисел', url='https://github.com/Shearer2/Random_numbers')
-urlButton3 = InlineKeyboardButton(text='Угадывание слов', url='https://github.com/Shearer2/Random_word')
-urlButton4 = InlineKeyboardButton(text='Парсер телеграм каналов', url='https://github.com/Shearer2/Parser_telegram')
-urlButton5 = InlineKeyboardButton(text='Адаптивный сайт', url='https://github.com/Shearer2/Adaptive-site')
-# Добавляем кнопки к уже созданной клавиатуре.
-urlkb.add(urlButton, urlButton2, urlButton3, urlButton4, urlButton5)
 
 
 # Настраиваем получение сообщений от сервера в телеграм. Если этого не сделать, то мы не получим ответы бота.
