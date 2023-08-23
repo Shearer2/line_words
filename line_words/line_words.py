@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils.callback_data import CallbackData
 from keyboards import keyboard, urlkb, ikb
 
 
@@ -77,6 +78,8 @@ HELP_COMMAND = """
 <b>/description</b> - <em>описание проекта</em>
 <b>/vote</b> - <em>голосование</em>
 """
+like, dislike = '', ''
+cb = CallbackData('ikb', 'action')
 
 
 # Отображение информации в консоли, что бот работает.
@@ -138,17 +141,49 @@ async def bot_description(message: types.Message) -> None:
 
 @dp.message_handler(commands=['vote'])
 async def bot_vote(message: types.Message) -> None:
-    await message.answer("Все ли слова угадываются?", reply_markup=ikb)
+    await message.answer("Все ли слова угадываются?\n\n"
+                         "Слов хватает:\n\n\n"
+                         "Слов не хватает:\n", reply_markup=ikb)
 
 
 # Создаём callback функцию для голосования.
 @dp.callback_query_handler()
 async def vote_callback(callback: types.CallbackQuery) -> None:
+    global like, dislike
     # callback - словарь, в котором хранится вся необходимая информация о пользователе, о сообщении, о выборе ответа.
     if callback.data == 'like':
-        # Не нужно указывать return, так как callback.answer завершает исполнение callback функции.
-        await callback.answer('Слов хватает')
-    await callback.answer('Слов не хватает')
+        like += '👍'
+        if len(like) >= len(dislike):
+            # Не нужно указывать return, так как callback.answer завершает исполнение callback функции.
+            await callback.message.edit_text("Все ли слова угадываются?\n\n"
+                                             "Слов хватает:\n"
+                                             f"{like}\n"
+                                             "Слов не хватает:\n"
+                                             f"{dislike}",
+                                             reply_markup=ikb)
+        else:
+            await callback.message.edit_text("Все ли слова угадываются?\n\n"
+                                             "Слов не хватает:\n"
+                                             f"{dislike}\n"
+                                             "Слов хватает:\n"
+                                             f"{like}",
+                                             reply_markup=ikb)
+    elif callback.data == 'dislike':
+        dislike += '👎'
+        if len(like) >= len(dislike):
+            await callback.message.edit_text("Все ли слова угадываются?\n\n"
+                                             "Слов хватает:\n"
+                                             f"{like}\n"
+                                             "Слов не хватает:\n"
+                                             f"{dislike}",
+                                             reply_markup=ikb)
+        else:
+            await callback.message.edit_text("Все ли слова угадываются?\n\n"
+                                             "Слов не хватает:\n"
+                                             f"{dislike}\n"
+                                             "Слов хватает:\n"
+                                             f"{like}",
+                                             reply_markup=ikb)
 
 
 # Создаём новое событие, которое запускается в ответ на любой текст, введённый пользователем.
