@@ -1,82 +1,32 @@
 import psycopg2
 import os
+import hashlib
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineQueryResultArticle, InputTextMessageContent  # Для работы инлайн режима.
 from aiogram.utils.callback_data import CallbackData
-from keyboards import keyboard, urlkb, ikb
+from postgresql import WordLine
+from keyboards import get_kb, get_url_kb, get_ikb, get_github
 
 
 # Bot - определяет, на какие команды от пользователя и каким способом отвечать.
 # Dispatcher - позволяет отслеживать обновления.
 # Executor - запускает бота и выполняет функции, которые следует выполнить.
 # Types - позволяет использовать базовые классы для аннотирования, то есть восприятия сообщений.
-# ReplyKeyboardRemove и ReplyKeyboardMarkup позволяют создавать и удалять клавиатуру, а класс KeyboardButton
-# используется для добавления кнопок.
-# Reply-кнопки прикрепляются к клавиатуре, а инлайн-кнопки прикрепляются к сообщению.
-# InlineKeyboardMarkup пригодится для инициализации инлайн-кнопок, а InlineKeyboardButton - для их создания.
-class WordLine:
-    def __init__(self, letters):
-        self.host = '127.0.0.1'
-        self.user = 'postgres'
-        self.password ='alegedor0012'  # input('Введите ваш пароль: '),
-        self.database = 'line_words'
-        self.letters = letters
-
-    def search_database(self):
-        connection = psycopg2.connect(
-            host=self.host,
-            user=self.user,
-            password=self.password,  # input('Введите ваш пароль: '),
-            database=self.database
-        )
-
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """SELECT word FROM words.all_words"""
-            )
-            # Собираем все записи в список.
-            words = list(map(lambda x: x[0], cursor.fetchall()))
-
-        connection.close()
-        return self.right_words(words)
-
-    def right_words(self, words: list):
-        result = ['Возможные слова:']
-        flag = False
-        for word in words:
-            if sorted(word) == sorted(self.letters):
-                result.append(word)
-            else:
-                for i in word:
-                    if word.count(i) == self.letters.count(i):
-                        flag = True
-                    else:
-                        flag = False
-                        break
-                if flag:
-                    result.append(word)
-        result.sort(key=len)
-        result.reverse()
-        if len(result) > 1:
-            return '\n'.join(result)
-        return 'Слов с такими буквами нет.'
-
-
 # Загружаем переменные среды, которые нужно скрыть от постронних глаз.
 load_dotenv()
 # Необходимо инициализировать объекты bot и Dispatcher, передав первому токен. Если этого не сделать, то код не будет
 # работать. Забираем значение нашего токена.
 bot = Bot(token=os.getenv('API_TOKEN'))
-dp = Dispatcher(bot)
+# storage - это хранилище, в котором будут храниться состояния и файлы, которые отправляются боту.
+dp = Dispatcher(bot=bot)
 HELP_COMMAND = """
-<b>/help</b> - <em>список команд</em>
-<b>/start</b> - <em>начать работу с ботом</em>
-<b>/links</b> - <em>перейти в репозиторий github</em>
-<b>/projects</b> - <em>ознакомиться с проектами</em>
-<b>/description</b> - <em>описание проекта</em>
-<b>/vote</b> - <em>голосование</em>
+<b>/start</b> - <em>начать работу с ботом.</em>
+<b>/vote</b> - <em>голосование.</em>
+<b>/link</b> - <em>перейти в репозиторий github.</em>
+<b>/projects</b> - <em>ознакомиться с проектами.</em>
+<b>/description</b> - <em>описание проекта.</em>
+<b>/help</b> - <em>вывести список команд.</em>
 """
 like, dislike = '', ''
 cb = CallbackData('ikb', 'action')
@@ -103,47 +53,43 @@ async def send_welcome(message: types.Message) -> None:
 @dp.message_handler(commands=['links'])
 async def url_command(message: types.Message) -> None:
     # Пишем сообщение пользователю при помощи answer.
-    #await message.answer('Полезные ссылки:', reply_markup=urlkb)
-    pass
+    await message.answer('Репозиторий github:', reply_markup=get_github())
 
 
+# Делаем обработку команды help.
 @dp.message_handler(commands=['help'])
 async def bot_help(message: types.Message) -> None:
     await message.answer(HELP_COMMAND, parse_mode="HTML")
-    #await message.answer('Бот создан для отгадывания слов из букв в игре Линия слова.\n'
-    #                     'Введите буквы и получите все возможные слова.')
 
 
+# Выводим список доступных проектов.
 @dp.message_handler(commands=['projects'])
 async def projects(message: types.Message) -> None:
-    await message.answer('Мои проекты:', reply_markup=urlkb)
+    await message.answer('Мои проекты:', reply_markup=get_url_kb())
 
 
-# Функция для отправки стикеров.
-@dp.message_handler(commands=['give'])
-async def bot_sticker(message: types.Message) -> None:
-    await bot.send_sticker(message.from_user.id,
-                           sticker="CAACAgIAAxkBAAEKCmFk3KOnuqxhgaM2DFhFG3VyNWsHtQACPwADQdL3IfZZVXp87Hm5MAQ")
-    await message.answer('Люблю Миланочку чудесную')
-
-
+'''
+# Функция для получения id стикера.
 @dp.message_handler(content_types=['sticker'])
 async def send_sticker_id(message: types.Message) -> None:
     await message.reply(f"Id стикера:\n{message.sticker.file_id}")
+'''
 
 
+# Выводим описание бота.
 @dp.message_handler(commands=['description'])
 async def bot_description(message: types.Message) -> None:
     await message.answer("Данный бот выдаёт все возможные слова на введённые буквы. Есть возможность проголосовать за "
-                         "то, все ли слова были найдены или нет. Можно ознакомиться с проектами автора бота или же с "
+                         "то, все ли слова были найдены или нет. Можно ознакомиться с проектами автора или же с "
                          "функционалом бота через команду help.")
 
 
+# Функция для проведения голосования.
 @dp.message_handler(commands=['vote'])
 async def bot_vote(message: types.Message) -> None:
     await message.answer("Все ли слова угадываются?\n\n"
                          "Слов хватает:\n\n\n"
-                         "Слов не хватает:\n", reply_markup=ikb)
+                         "Слов не хватает:\n", reply_markup=get_ikb())
 
 
 # Создаём callback функцию для голосования.
@@ -160,14 +106,14 @@ async def vote_callback(callback: types.CallbackQuery) -> None:
                                              f"{like}\n"
                                              "Слов не хватает:\n"
                                              f"{dislike}",
-                                             reply_markup=ikb)
+                                             reply_markup=get_ikb())
         else:
             await callback.message.edit_text("Все ли слова угадываются?\n\n"
                                              "Слов не хватает:\n"
                                              f"{dislike}\n"
                                              "Слов хватает:\n"
                                              f"{like}",
-                                             reply_markup=ikb)
+                                             reply_markup=get_ikb())
     elif callback.data == 'dislike':
         dislike += '👎'
         if len(like) >= len(dislike):
@@ -176,22 +122,51 @@ async def vote_callback(callback: types.CallbackQuery) -> None:
                                              f"{like}\n"
                                              "Слов не хватает:\n"
                                              f"{dislike}",
-                                             reply_markup=ikb)
+                                             reply_markup=get_ikb())
         else:
             await callback.message.edit_text("Все ли слова угадываются?\n\n"
                                              "Слов не хватает:\n"
                                              f"{dislike}\n"
                                              "Слов хватает:\n"
                                              f"{like}",
-                                             reply_markup=ikb)
+                                             reply_markup=get_ikb())
+
+
+@dp.inline_handler()
+async def inline_words(inline_query: types.InlineQuery) -> None:
+    # Получаем текст пользователя.
+    text = inline_query.query
+    word_line = WordLine(text.lower())
+    # Формируем контент ответного сообщения.
+    input_content = InputTextMessageContent(word_line.right_words())
+    # Для отправки сообщения у него должен быть уникальный идентификатор, для его получения будем использовать
+    # хэш-функцию для кодирования сообщения.
+    # Полученное сообщение переводим в двоичную систему счисления, затем кодируем и переводим в 16-ую систему счисления.
+    result_id = hashlib.md5(text.encode()).hexdigest()
+
+    # Чтобы отправить текстовое сообщение используется Article. Он является наиболее часто используемым классом.
+    # thumb_url нужен для подстановки картинки.
+    item = InlineQueryResultArticle(
+        input_message_content=input_content,
+        id=result_id,
+        title='Линия слова',
+        description='Введите буквы',
+        thumb_url='https://play-lh.googleusercontent.com/F3mmWSAnQ8Y3ys8KY8v0tD0Sd1hLHoSbA3SGsmQWbt5KsZq9rh2grAefGbgQKkv2Tlg'
+    )
+
+    # Отвечаем на инлайн запрос. Указываем id сообщения, затем передаём список из тех элементов, которыми мы будем
+    # отвечать, затем указываем то время в течении которого в телеграм api будут кешироваться данные.
+    await bot.answer_inline_query(inline_query_id=inline_query.id,
+                                  results=[item],
+                                  cache_time=1)
 
 
 # Создаём новое событие, которое запускается в ответ на любой текст, введённый пользователем.
 @dp.message_handler()
-async def echo(message: types.Message) -> None:
+async def words(message: types.Message) -> None:
     # В строку для ответа добавляем reply_markup=keyboard, чтобы показать клавиатуру в телеграм.
     word_line = WordLine(message.text.lower())
-    await message.answer(text=word_line.search_database(), reply_markup=keyboard)
+    await message.answer(text=word_line.right_words(), reply_markup=get_kb())
 
 
 # Настраиваем получение сообщений от сервера в телеграм. Если этого не сделать, то мы не получим ответы бота.
