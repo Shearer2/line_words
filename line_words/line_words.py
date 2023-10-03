@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineQueryResultArticle, InputTextMessageContent  # Для работы инлайн режима.
 from aiogram.utils.callback_data import CallbackData
-from postgresql import db_start, information_id, create_profile, delete_profile, right_words
+from postgresql import db_start, information_id, information_vote, create_profile, delete_profile, right_words
 from keyboards import get_kb, get_url_kb, get_ikb, get_github
 
 
@@ -82,8 +82,8 @@ async def bot_description(message: types.Message) -> None:
 @dp.message_handler(commands=['vote'])
 async def bot_vote(message: types.Message) -> None:
     await message.answer("Все ли слова угадываются?\n\n"
-                         "Слов хватает:\n\n\n"
-                         "Слов не хватает:\n", reply_markup=get_ikb())
+                         f"Слов хватает:\n{information_vote().count('like') * '👍'}\n\n"
+                         f"Слов не хватает:\n{information_vote().count('dislike') * '👎'}", reply_markup=get_ikb())
 
 
 # Создаём callback функцию для голосования.

@@ -40,6 +40,17 @@ def information_id():
     return inf_user
 
 
+# Функция для получения всех голосов.
+def information_vote():
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""SELECT voice FROM vote.people"""
+        )
+        inf_vote = list(map(lambda x: x[0], cursor.fetchall()))
+    return inf_vote
+
+
+
 # Функция для вывода только тех слов, которые подходят.
 def right_words(letters):
     result_start = 'Возможные слова:\n'
