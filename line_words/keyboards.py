@@ -7,13 +7,13 @@ def get_kb() -> ReplyKeyboardMarkup:
     kb = [
         [
             # Создаём кнопки.
-            KeyboardButton(text="/help"),
-            KeyboardButton(text="/links"),
+            KeyboardButton(text="/vote"),
+            KeyboardButton(text="/link"),
             KeyboardButton(text="/projects")
         ],
         [
             KeyboardButton(text="/description"),
-            KeyboardButton(text="/vote")
+            KeyboardButton(text="/help")
         ],
     ]
     # Создаём клавиатуру и рассказываем ей про наши кнопки.
@@ -41,10 +41,12 @@ def get_ikb() -> InlineKeyboardMarkup:
     ikb = InlineKeyboardMarkup(row_width=1)
     button1 = InlineKeyboardButton(text="Да", callback_data="like")
     button2 = InlineKeyboardButton(text="Нет", callback_data="dislike")
-    ikb.add(button1, button2)
+    button3 = InlineKeyboardButton(text="Удалить голос", callback_data="delete")
+    ikb.add(button1, button2, button3)
     return ikb
 
 
+# Клавиатура с ссылкой на репозиторий github.
 def get_github() -> InlineKeyboardMarkup:
     url_kb = InlineKeyboardMarkup(row_width=1)
     url_btn = InlineKeyboardButton(text='Github', url='https://github.com/Shearer2?tab=repositories')
