@@ -50,7 +50,6 @@ def information_vote():
     return inf_vote
 
 
-
 # Функция для вывода только тех слов, которые подходят.
 def right_words(letters):
     result_start = 'Возможные слова:\n'

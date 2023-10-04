@@ -28,8 +28,29 @@ HELP_COMMAND = """
 <b>/description</b> - <em>описание проекта.</em>
 <b>/help</b> - <em>вывести список команд.</em>
 """
-like, dislike = '', ''
 cb = CallbackData('ikb', 'action')
+
+
+# Функция для голосования.
+def vote_answer():
+    like = information_vote().count('like')
+    dislike = information_vote().count('dislike')
+    # Если лайков больше, то выводим следующее сообщение.
+    if like >= dislike:
+        text = f"Все ли слова угадываются?\n\n" \
+               f"Слов хватает:\n" \
+               f"{like * '👍'}\n" \
+               f"Слов не хватает:\n" \
+               f"{dislike * '👎'}"
+        return text
+    # Иначе выводим данный текст.
+    else:
+        text = f"Все ли слова угадываются?\n\n" \
+               f"Слов не хватает:\n" \
+               f"{dislike * '👎'}\n" \
+               f"Слов хватает:\n" \
+               f"{like * '👍'}"
+        return text
 
 
 # Отображение информации в консоли, что бот работает.
@@ -81,54 +102,32 @@ async def bot_description(message: types.Message) -> None:
 # Функция для проведения голосования.
 @dp.message_handler(commands=['vote'])
 async def bot_vote(message: types.Message) -> None:
-    await message.answer("Все ли слова угадываются?\n\n"
-                         f"Слов хватает:\n{information_vote().count('like') * '👍'}\n\n"
-                         f"Слов не хватает:\n{information_vote().count('dislike') * '👎'}", reply_markup=get_ikb())
+    await message.answer(vote_answer(), reply_markup=get_ikb())
 
 
 # Создаём callback функцию для голосования.
 @dp.callback_query_handler()
 async def vote_callback(callback: types.CallbackQuery) -> None:
-    global like, dislike
     user_id = callback['from']['id']
     # callback - словарь, в котором хранится вся необходимая информация о пользователе, о сообщении, о выборе ответа.
+    # Если была нажата кнопка like и пользователя нет в базе данных, то заносим его в базу данных и выводим
+    # исправленное сообщение с его голосом.
     if callback.data == 'like' and user_id not in information_id():
-        like += '👍'
         await create_profile(user_id, callback.data)
-        if len(like) >= len(dislike):
-            # Не нужно указывать return, так как callback.answer завершает исполнение callback функции.
-            await callback.message.edit_text("Все ли слова угадываются?\n\n"
-                                             "Слов хватает:\n"
-                                             f"{like}\n"
-                                             "Слов не хватает:\n"
-                                             f"{dislike}",
-                                             reply_markup=get_ikb())
-        else:
-            await callback.message.edit_text("Все ли слова угадываются?\n\n"
-                                             "Слов не хватает:\n"
-                                             f"{dislike}\n"
-                                             "Слов хватает:\n"
-                                             f"{like}",
-                                             reply_markup=get_ikb())
+        # Не нужно указывать return, так как callback.answer завершает исполнение callback функции.
+        await callback.message.edit_text(vote_answer(), reply_markup=get_ikb())
+    # Иначе если пользователя нажал dislike и его нет в базе данных, то заносим в базу данных и исправляем сообщение.
     elif callback.data == 'dislike' and user_id not in information_id():
-        dislike += '👎'
         await create_profile(user_id, callback.data)
-        if len(like) >= len(dislike):
-            await callback.message.edit_text("Все ли слова угадываются?\n\n"
-                                             "Слов хватает:\n"
-                                             f"{like}\n"
-                                             "Слов не хватает:\n"
-                                             f"{dislike}",
-                                             reply_markup=get_ikb())
-        else:
-            await callback.message.edit_text("Все ли слова угадываются?\n\n"
-                                             "Слов не хватает:\n"
-                                             f"{dislike}\n"
-                                             "Слов хватает:\n"
-                                             f"{like}",
-                                             reply_markup=get_ikb())
+        await callback.message.edit_text(vote_answer(), reply_markup=get_ikb())
+    # Иначе если пользователь удалил свой голос и он есть в базе данных, то удаляем его голос из базы данных.
     elif callback.data == 'delete' and user_id in information_id():
         await delete_profile(user_id)
+        await callback.message.edit_text(vote_answer(), reply_markup=get_ikb())
+    # Иначе если пользователь пытается удалить свой голос и его нет в базе данных, то выводим сообщение, что нет голоса.
+    elif callback.data == 'delete' and user_id not in information_id():
+        await callback.message.answer("Вы не проголосовали!")
+    # Если пользователь есть в базе данных и пытается проголосовать, то оповещаем его об этом.
     else:
         await callback.message.answer("Вы уже проголосовали!")
 
